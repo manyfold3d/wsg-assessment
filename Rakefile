@@ -1,6 +1,7 @@
 require 'json'
 require 'net/http'
 require 'date'
+require 'csv'
 
 namespace :generate do
   task :markdown do
@@ -66,6 +67,43 @@ namespace :generate do
               </details>
 
             EOD
+          end
+        end
+      end
+    end
+  end
+
+  task :csv do
+    json = JSON.parse(Net::HTTP.get(URI.parse("https://w3c.github.io/sustyweb/guidelines.json")))
+    CSV.open("out.csv", "wb") do |csv|
+      # Headers
+      csv << [ "# Sustainability Self-Assessment #{Date.today}" ]
+      csv << [ "# Assessed against the #{json["title"]} version #{json["version"]} (#{json["edition"]}) on #{Date.today}." ]
+      csv << ["Section", "Title", "Description", "RAG Status", "Comment"]
+      json["category"].each do |category|
+        next unless ["2", "3", "4", "5"].include?(category["id"])
+        if category["guidelines"]
+          csv << [
+            category["id"],
+            category["name"],
+            nil, "-", "-"
+          ]
+          category["guidelines"].each do |guideline|
+            csv << [
+              "#{category["id"]}.#{guideline["id"]}",
+              guideline["guideline"],
+              guideline["description"],
+              "-", "-"
+            ]
+            guideline["criteria"].each_with_index do |criterion, index|
+              csv << [
+                "#{category["id"]}.#{guideline["id"]}#{("a".."z").to_a[index]}",
+                criterion["title"],
+                criterion["description"],
+                "TODO: choose Red/Amber/Green/NA",
+                "TODO: Write assessment detail here"
+              ]
+            end
           end
         end
       end
